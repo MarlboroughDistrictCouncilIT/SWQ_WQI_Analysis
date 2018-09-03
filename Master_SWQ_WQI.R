@@ -26,7 +26,7 @@ guidelineMtx <- func_SWQ_guidelines()
 for (i in 1:length(guidelineMtx[1,])){
   i_parameter <- colnames(guidelineMtx)[i]
   i_parametersymbol <- as.name(paste(as.character(i_parameter),"_boo",sep = ""))
-  siteData <- mutate(siteData, !!i_parametersymbol := between(siteData[,i_parameter],guidelineMtx["Low",i_parameter],guidelineMtx["High",i_parameter]))
+  siteData <- mutate(siteData, !!i_parametersymbol := !between(siteData[,i_parameter],guidelineMtx["Low",i_parameter],guidelineMtx["High",i_parameter]))
 }
 
 time_span <- c(2013,2015)
@@ -34,9 +34,12 @@ siteData_ofinterest <- filter(siteData, between(year(siteData$Date),time_span[1]
 
 #functions to perform F1, F2, F3 analysis
 
+source("load_SWQ_functions.R")
 #F1
-# siteData_ofinterest.F1 <- 
-
+#F1 <- siteData_ofinterest %>%
+ # select(contains("boo")) %>%
+  #func_SWQ_calcF1()
+  
 #calc WQI
 
 #plot WQI, 
@@ -52,7 +55,7 @@ yparameter <-  "pH"
 ggplot(siteData_ofinterest) + 
   aes_string(x="Date",y=yparameter) + geom_line() + geom_point() +
   geom_hline(yintercept = guidelineMtx[,yparameter], colour = "blue") +
-  geom_point(data=filter(siteData_ofinterest, !!as.symbol(paste(yparameter,"_boo",sep="")) == "FALSE"),aes_string(x="Date",y=yparameter), colour="red",size=3)
+  geom_point(data=filter(siteData_ofinterest, !!as.symbol(paste(yparameter,"_boo",sep="")) == "TRUE"),aes_string(x="Date",y=yparameter), colour="red",size=3)
 
 ####
 # ggplot(filter(plotdata, pH1 == "FALSE")) +
