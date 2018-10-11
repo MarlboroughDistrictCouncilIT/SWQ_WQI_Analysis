@@ -17,3 +17,5 @@ colnames(siteData) <- c("Site",
                         "Temperature",
                         "pH",
                         "SINitrogen")
+
+siteData <- as.tibble(siteData)
