@@ -58,7 +58,7 @@ siteData_full <- siteData %>%
   mutate(SiteLat = map2_dbl(.$Northing, .$Easting, coord_NZTMToGeo , output = "lat")) %>% 
   mutate(SiteLon = map2_dbl(.$Northing, .$Easting, coord_NZTMToGeo, output = "lon"))
 
-#export sitedata_full for shiny app
+#export site data for shiny app
 #### saveRDS(siteData_full,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_full.rds")
 
 # test10 <- siteData2_full %>% 
@@ -75,8 +75,8 @@ siteData_full <- siteData %>%
 
 #####select time span of data to consider for WQI#####
 
-year_start <- 2007:(year(now())-2)
-
+year_start <- 2008
+time_span <- c(year_start,year_start+2)
 
 # siteData_ofinterest  <- siteData_full %>% 
 #   filter(between(year(.$Date),time_span[1],time_span[2])) %>% 
@@ -97,91 +97,75 @@ year_start <- 2007:(year(now())-2)
 #   map_chr(func_SWQ_WQIclass) %>% 
 #   factor(wqiClassFactorLevels)
 
-# siteData_WQI <- tibble()
-for(i in 1:length(year_start)){
-  if(i==1){siteData_WQI <- tibble()}
-  siteData_WQI  <- siteData_full %>%
-    filter(between(year(.$Date), year_start[i], year_start[i]+2)) %>%
-    mutate(yearStart=year_start[i]) %>% 
-    bind_rows(siteData_WQI,.)
-}
 
-siteData_WQI <- siteData_WQI %>% 
-    group_by(yearStart, Site, Easting, Northing, SiteLat, SiteLon) %>%
-    nest() %>%
-    mutate(WQI_calcs = map(.$data, func_SWQ_calcWQI, guide.lines = g_lines)) #add yearstart variable here
+siteData_ofinterest  <- siteData_full %>%
+  filter(between(year(.$Date),time_span[1],time_span[2])) %>%
+  group_by(Site, Easting, Northing, SiteLat, SiteLon) %>%
+  nest() %>%
+  mutate(WQI_calcs = map(.$data, func_SWQ_calcWQI, guide.lines = g_lines))
 
-siteData_WQI <- siteData_WQI$WQI_calcs %>%
+siteData_ofinterest <- siteData_ofinterest$WQI_calcs %>%
   map_df(.,flatten_df) %>%
-  bind_cols(select(siteData_WQI,-WQI_calcs),.)
+  bind_cols(select(siteData_ofinterest,-WQI_calcs),.)
 
-siteData_WQI$WQI_class <- siteData_WQI$WQI %>%
+siteData_ofinterest$WQI_class <- siteData_ofinterest$WQI %>%
   map_chr(func_SWQ_WQIclass) %>%
   factor(wqiClassFactorLevels)
-
-#export siteData_WQI for shiny app
-saveRDS(siteData_WQI,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_WQI.rds")
-
 
 
 ### plot WQI for report ###
 # 
 # ## WQI by site plot
-filter(siteData_WQI,yearStart==2013) %>% 
-  ggplot(aes(x = reorder(Site, WQI), y = WQI)) +
-    geom_bar(stat = "identity", fill="blue", width = 0.5) +
-    geom_hline(yintercept = c(45,65,80,95), colour = c("orange","gold","green", "darkgreen"), size = 0.5) +
-    # scale_y_continuous(limits = c(0, 100)) +
-    coord_flip() +
-    theme_bw() +
-    labs(x = "", y = "Water Quality Index") +
-    scale_y_discrete(limits=c(seq(0,100,10)))
+ggplot(siteData_ofinterest, aes(x = reorder(Site, WQI), y = WQI)) +
+  geom_bar(stat = "identity", fill="blue", width = 0.5) +
+  geom_hline(yintercept = c(45,65,80,95), colour = c("orange","gold","green", "darkgreen"), size = 0.5) +
+  # scale_y_continuous(limits = c(0, 100)) +
+  coord_flip() +
+  theme_bw() +
+  labs(x = "", y = "Water Quality Index") +
+  scale_y_discrete(limits=c(seq(0,100,10)))
  
 # ## Parameter by site plot
-siteData_WQI %>%
-  filter(yearStart==2013) %>% View
+siteData_ofinterest %>%
   select(Site, WQI, contains("Ftot")) %>%
   select_all(~str_replace(., "Ftot_","")) %>%
-  View
   gather(key=Parameter,value = Ftot, 3:11) %>%
   mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>%
-  View
   ggplot(aes(x=reorder(Site, WQI), y=-1*Ftot, fill=Parameter)) +
     geom_bar(stat="identity", width = 0.5) +
     coord_flip() + theme_bw() + labs(x = "", y = "Parameter contribution") +
     scale_fill_manual(values = paramColours) +
     scale_y_discrete(limits=c(seq(-70,0,10)))
 
+ggplot(data=siteData_ofinterest[1,],aes(x=2008, y=WQI)) + 
+  geom_point(size=4, colour="blue") + 
+  geom_bar()
 
-## WQI and parameter deduction trend
-siteData_WQI %>%
-  filter(Site=="Are Are Creek at Kaituna Tuamarina Track") %>%
-  select(yearStart, Site, WQI, contains("Ftot")) %>%
+siteData_ofinterest[1,] %>%
+  select(Site, WQI, contains("Ftot")) %>%
   select_all(~str_replace(., "Ftot_","")) %>%
-  gather(key=Parameter,value = Ftot, Turbidity:Ammonia) %>%
+  gather(key=Parameter,value = Ftot, 3:11) %>%
   mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>%
-  ggplot(aes(x=yearStart, y=-1*Ftot, fill=Parameter)) +
+  ggplot(aes(x=2008, y=-1*Ftot, fill=Parameter)) +
     geom_col(width = 0.5) +
-    theme_bw() + labs(x = "Year", y = "Parameter deduction") +
+    theme_bw() + labs(x = "", y = "Parameter deduction") +
     scale_fill_manual(values = paramColours) +
-    scale_y_continuous(position = "right", limits = c(-100,0), sec.axis = sec_axis(~.+100, name="Water Quality Index")) +
-    geom_point(aes(y=WQI-100), size=4, colour="blue") +
-    geom_line(aes(y=WQI-100), size=1.5, colour="blue")
-
-
-
-## plot parameter over time    
-siteData_full %>%
-  filter(Site=="Are Are Creek at Kaituna Tuamarina Track") %>% 
-  ggplot(aes(x=Date, y=SINitrogen)) +
-    geom_col(fill=paramColours["SINitrogen"])
+    # scale_y_discrete(limits=c(seq(0,100,10))) +
+    scale_x_discrete(limits=c(seq(2007,2018,1))) +
+    scale_y_continuous(position = "right", sec.axis = sec_axis(~.+100)) +
+    geom_point(aes(x=2008, y=WQI-100), size=4, colour="blue") +
+    geom_line
     
+
+
+
+
 ## plot WQI on map ##
 
-# if(exists("myMap")==FALSE){
-#   Marlborough <- c(lon=173.881,lat=-41.584)
-#   myMap <- get_map(location = Marlborough, source = "google", zoom=9)
-# }
+if(exists("myMap")==FALSE){
+  Marlborough <- c(lon=173.881,lat=-41.584)
+  myMap <- get_map(location = Marlborough, source = "google", zoom=9)
+}
 
 # ggmap(myMap) +
 #   geom_point(data = siteData_ofinterest, aes(x = SiteLon, y = SiteLat,  colour = WQI_class), size = 4) +
