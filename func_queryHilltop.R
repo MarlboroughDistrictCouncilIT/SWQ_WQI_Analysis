@@ -21,7 +21,7 @@ mList <- unique(Collection[2])
 siteData <- tibble()
 for(i in 1:length(sList[,1])){
   sInfo <- SiteInfo(HTfile, sList[i,])
-  print(paste0("Loading site ",i, " of ", length(sList[,1])))
+  print(paste0("Loading site ",i, " of ", length(sList[,1])," - ",sList[i,]))
   sData <- GetData(HTfile, sList[i,], mList[,1], startTime, endTime, ParamFilter = projectCodeQuery)
   # print(paste0("Loaded ",length(sData), " entries from site ",sList[i,]))
   
@@ -29,10 +29,11 @@ for(i in 1:length(sList[,1])){
     print(paste0("Warning: Site ", sList[i,]," returned no data for time range supplied."))
   } else {  
   sData <- sData %>%
-    map(.,gsub, pattern = "<", replacement = "") %>% 
+    map(.,gsub, pattern = "<", replacement = "") %>%
+    map(.,gsub, pattern = ">", replacement = "") %>%
     map(.,zooTidy) %>%
-    reduce(full_join, by="Date")     
-  
+    reduce(full_join, by="Date")
+
   sData$Site <- sList[i,]
   sData$Easting <- as.double(sInfo["Easting"])
   sData$Northing <- as.double(sInfo["Northing"])
