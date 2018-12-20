@@ -1,4 +1,4 @@
-coord_geoToNZTM <- function(lat=lat,lon=lon){
+func_coord_geoToNZTM <- function(lat=lat,lon=lon){
   
   phi <- lat * pi/180 #radians
   lambda <- lon * pi/180 #radians

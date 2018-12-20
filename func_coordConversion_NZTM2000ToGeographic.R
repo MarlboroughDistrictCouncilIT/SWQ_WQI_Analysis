@@ -1,10 +1,10 @@
-coord_NZTMToGeo <- function(northing, easting, output = "latlon"){
+func_coord_NZTMToGeo <- function(northing, easting, output = "latlon"){
   ## define projection Parameters 
   pP <- data.frame(a = 6378137,
                    f = 1/298.257222101, 
                    phi_0 = 0 * pi/180, #radians
                    lambda_0 = 173 * pi/180, #radians
-                   N_0 = 10E6,
+                   N_0 = 10E6, #+425,
                    E_0 = 1.6E6,
                    k_0 = 0.9996
                    )

@@ -152,6 +152,44 @@ func_NZTM_WGS84 <- function(Easting, Northing, output = "latlon"){
   }
 }
 
+func_SWQ_siteShortNames <- function(){
+  c("Are Are Creek at Kaituna Tuamarina Track" = "Are Are Creek",
+    "Awatere River at Awapiri" = "Mid Awatere River",
+    "Awatere River at River Mouth" = "Lower Awatere River",
+    "Black Birch Stream at Awatere Intake" = "Black Birch Stream",
+    "Branch River at Weir Intake" = "Branch River",
+    "Cullen Creek at Road Bridge" = "Cullens Creek",
+    "Doctors Creek Upstream Taylor" = "Doctors Creek",
+    "Duncan Stream at Outlet" = "Linkwater Stream",
+    "Flaxbourne River at Quarry" = "Flaxbourne River",
+    "Goulter River at Horseshoe Bend" = "Goulter River",
+    "Graham River at Road Bridge" = "Graham River",
+    "Kaituna River at Higgins Bridge" = "Kaituna River",
+    "Kenepuru Stream at Kenepuru Head" = "Kenepuru Stream",
+    "Mill Creek at Ormonds" = "Mill Creek",
+    "Murphys Creek at Nelson Street" = "Murphys Creek",
+    "Omaka River at Hawkesbury Road Bridge" = "Omaka River",
+    "Onamalutu River at Northbank Road" = "Ohinemahuta River",
+    "Opawa River at Hammerichs Road" = "Mid Opaoa River",
+    "Opawa River at Swamp Road" = "Lower Opaoa River",
+    "Opouri River at Tunakino Valley Road" = "Opouri River",
+    "Pelorus River at Fishermans Flat" = "Lower Pelorus River",
+    "Pelorus River at Kahikatea Flat" = "Upper Pelorus River",
+    "Rai River at Rai Falls" = "Rai River",
+    "Ronga River at Upstream Rai River" = "Ronga River",
+    "Spring Creek at Wairau River Floodgates" = "Spring Creek",
+    "Taylor River at Rail Bridge" = "Taylor River",
+    "Tuamarina River at State Highway One" = "Tuamarina River",
+    "Waihopai River at Craiglochart" = "Mid Waihopi River",
+    "Waihopai River at SH63 Bridge" = "Upper Waihopi River",
+    "Waima \\(Ure\\) River at SH1 Bridge" = "Waima River",
+    "Wairau Diversion at Neals Road Bridge" = "Wairau Diversion",
+    "Wairau River at Dip Flat" = "Upper Wairau River",
+    "Wairau River at Tuamarina" = "Lower Wairau River",
+    "Waitohi River at State Highway One" = "Waitohi River",
+    "Wakamarina River at SH6" = "Wakamarina River"
+  )
+}
 
 #### Backup of formulae
 
