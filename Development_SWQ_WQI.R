@@ -5,11 +5,22 @@ library(tidyverse)
 library(lubridate)
 library(readxl)
 # library(ggmap)
-source("load_SWQ_functions.R") 
-# source("func_coordConversion_NZTM2000ToGeographic.R") 
 
-#import data - Hilltop
+source("load_SWQ_functions.R") 
 source("func_queryHilltop.R")
+
+
+##define project values
+paramColours <- c("SINitrogen" = "#95d680", "Phosphorus" = "#00cccc", "Oxygen" = "#00aaff", "Turbidity" = "#989898", "Ecoli" = "#ff9999", "Temperature" = "#ff9933", "pH" = "#dd99ff", "Ammonia" = "#dc65c0", "Nitrate" = "#b8b76b")
+
+wqiClassFactorLevels <- c("Poor", "Marginal","Fair", "Good", "Excellent")
+wqiColours <- c("Poor"="red", "Marginal"="orange", "Fair"="gold", "Good"="green","Excellent"="darkgreen")
+# names(wqiColours) <- levels(siteData_ofinterest$WQI_class[[1]])
+
+g_lines <- func_SWQ_guidelines_tibble()
+
+
+##import data - Hilltop
 
 # hilltopDataPath <- "//hydro2/hilltop/data/MDC Data.hts" ## to server **** safe start <- 29/03/07 ****
 # hilltopProjectPath <- "U:/StaffResources/R-Z/She/Resources/General Project.hpr"
@@ -26,16 +37,7 @@ siteData <- func_queryHilltop(hilltopDataPath, hilltopProjectPath, collection, s
 siteData <- rename(siteData, Date=1, Temperature=2, Oxygen=3, Nitrate=4, Nitrite=5, Phosphorus=6, Ammonia=7, Ecoli=8, pH=9, Turbidity=10, Site=11, Easting=12, Northing=13)
 
 siteData <- mutate(siteData, SINitrogen = Ammonia + Nitrite)
-
-# 
-# #define project values
-paramColours <- c("SINitrogen" = "#95d680", "Phosphorus" = "#00cccc", "Oxygen" = "#00aaff", "Turbidity" = "#989898", "Ecoli" = "#ff9999", "Temperature" = "#ff9933", "pH" = "#dd99ff", "Ammonia" = "#dc65c0", "Nitrate" = "#b8b76b")
- 
-wqiClassFactorLevels <- c("Poor", "Marginal","Fair", "Good", "Excellent")
-wqiColours <- c("Poor"="red", "Marginal"="orange", "Fair"="gold", "Good"="green","Excellent"="darkgreen")
-# # names(wqiColours) <- levels(siteData_ofinterest$WQI_class[[1]])
- 
-g_lines <- func_SWQ_guidelines_tibble()
+siteData$siteShort <- str_replace_all(siteData$Site, func_SWQ_siteShortNames())
 
 dfCoords <- func_NZTM_WGS84(siteData$Easting, siteData$Northing)
 
@@ -67,8 +69,8 @@ siteData_full <- siteData %>%
 
  
 #export sitedata_full for shiny app
-# saveRDS(siteData_full,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_full.rds")
-
+### saveRDS(siteData_full,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_full.rds")
+# # siteData_full <- readRDS("C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_full.rds")
 
 #####select time span of data to consider for WQI#####
 
@@ -104,7 +106,7 @@ for(i in 1:length(year_start)){
 }
 
 siteData_WQI <- siteData_WQI %>%
-    group_by(yearStart, Site, Easting, Northing, SiteLat, SiteLon) %>%
+    group_by(yearStart, Site, siteShort, Easting, Northing, SiteLat, SiteLon) %>%
     nest() %>%
     mutate(WQI_calcs = map(.$data, func_SWQ_calcWQI, guide.lines = g_lines)) #add yearstart variable here
 
@@ -117,7 +119,8 @@ siteData_WQI$WQI_class <- siteData_WQI$WQI %>%
   factor(wqiClassFactorLevels)
 
 #export siteData_WQI for shiny app
-# saveRDS(siteData_WQI,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_WQI.rds")
+### saveRDS(siteData_WQI,"C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_WQI.rds")
+# # siteData_WQI <- readRDS("C:/VM1/R_playground/SWQ_Project/SWQ_Shiny/SWQ_ShinyPOC/siteData_WQI.rds")
 
 # siteData_WQI %>% 
 #   filter(yearStart==2013) %>% 
@@ -126,95 +129,95 @@ siteData_WQI$WQI_class <- siteData_WQI$WQI %>%
 #   View
 
 
-### plot WQI for report ###
-#
-# ## WQI by site plot
-filter(siteData_WQI,yearStart==2013) %>%
-  ggplot(aes(x = reorder(Site, WQI), y = WQI)) +
-    geom_bar(stat = "identity", fill="blue", width = 0.5) +
-    geom_hline(yintercept = c(45,65,80,95), colour = c("orange","gold","green", "darkgreen"), size = 0.5) +
-    # scale_y_continuous(limits = c(0, 100)) +
-    coord_flip() +
-    theme_bw() +
-    labs(x = "", y = "Water Quality Index") +
-    scale_y_discrete(limits=c(seq(0,100,10)))
-
-# ## Parameter by site plot
-siteData_WQI %>%
-  filter(yearStart==2013) %>%
-  select(Site, WQI, contains("Ftot")) %>%
-  select_all(~str_replace(., "Ftot_","")) %>%
-  gather(key=Parameter,value = Ftot, 3:11) %>%
-  mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>%
-  ggplot(aes(x=reorder(Site, WQI), y=-1*Ftot, fill=Parameter)) +
-    geom_bar(stat="identity", width = 0.5) +
-    coord_flip() + theme_bw() + labs(x = "", y = "Parameter contribution") +
-    scale_fill_manual(values = paramColours) +
-    scale_y_discrete(limits=c(seq(-70,0,10)))
-
-
-# ## WQI and parameter deduction trend
-siteData_WQI %>%
-  # filter(Site=="Mill Creek at Ormonds") %>%
-  filter(Site=="Waima (Ure) River at SH1 Bridge") %>%
-  # filter(Site=="Rai River at Rai Falls") %>%
-  select(yearStart, Site, WQI, completeSet, contains("Ftot")) %>%
-  mutate(alpha=factor(completeSet, levels = c(T,F))) %>%
-  # mutate(alpha=completeSet*0.6+0.4) %>% 
-  select_all(~str_replace(., "Ftot_","")) %>% 
-  gather(key=Parameter,value = Ftot, Turbidity:Nitrate) %>%
-  mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>% 
-  ggplot(aes(x=yearStart, y=-1*Ftot)) +
-    
-    theme_bw() + labs(x = "Year", y = "Parameter deduction") +
-    
-    scale_y_continuous(position = "right", limits = c(-100,0), 
-                       sec.axis = sec_axis(~.+100, name="Water Quality Index")) +
-    scale_x_continuous(breaks = seq(2000,2025,1)) +
-    
-    scale_fill_manual(values = paramColours, labels = names(paramColours), name =  "Parameters") +
-    scale_colour_manual(values = "blue", labels = "WQI", name = NULL) +
-  
-    scale_alpha_manual(name = "Dataset completeness", values = c(1,0.6), label = c("Full", "Partial"), drop = FALSE) +
-    
-    geom_col(aes(fill=Parameter, alpha=alpha), width = 0.5) +
-    geom_point(aes(y=WQI-100, colour="WQI"), size=4) +
-    geom_line(aes(y=WQI-100, colour="WQI"), size=1.5) 
-    
-    
-  
-
-
-# ## plot parameter over time
-siteData_full %>%
-  filter(Site=="Mill Creek at Ormonds") %>% #Awatere River at River Mouth
-  arrange(Date) %>%
-  ggplot(aes(x=Date, y=Turbidity, col="Turbidity")) +
-    geom_line() + 
-    geom_point() + 
-    theme_bw() +
-    scale_y_continuous(expand = expand_scale(mult = c(0.1,0.1))) + 
-    scale_x_datetime(date_breaks = "1 year", date_labels = "%Y", expand = expand_scale(add = c(0.5,0.5))) +
-    scale_colour_manual(values=paramColours["Turbidity"], name="Parameter", labels="SINitrogen")  
-
-
-      
-  
-    labs(x = "Year", y = "SINitrogen", title = paste0("SINitrogen variation with time at Mill Creek at Ormonds site"))
-    
-    
-    
-  
-
-
-(fill=paramColours["SINitrogen"])
-  
-    
-      scale_x_datetime(date_breaks = "1 year", 
-                     date_labels = "%Y",
-                     expand = expand_scale(mult = c(0.1,0.1))) +
-    scale_y_continuous(expand = expand_scale(mult = c(0,0.1)))
-  
+# ### plot WQI for report ###
+# #
+# # ## WQI by site plot
+# filter(siteData_WQI,yearStart==2013) %>%
+#   ggplot(aes(x = reorder(Site, WQI), y = WQI)) +
+#     geom_bar(stat = "identity", fill="blue", width = 0.5) +
+#     geom_hline(yintercept = c(45,65,80,95), colour = c("orange","gold","green", "darkgreen"), size = 0.5) +
+#     # scale_y_continuous(limits = c(0, 100)) +
+#     coord_flip() +
+#     theme_bw() +
+#     labs(x = "", y = "Water Quality Index") +
+#     scale_y_discrete(limits=c(seq(0,100,10)))
+# 
+# # ## Parameter by site plot
+# siteData_WQI %>%
+#   filter(yearStart==2013) %>%
+#   select(Site, WQI, contains("Ftot")) %>%
+#   select_all(~str_replace(., "Ftot_","")) %>%
+#   gather(key=Parameter,value = Ftot, 3:11) %>%
+#   mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>%
+#   ggplot(aes(x=reorder(Site, WQI), y=-1*Ftot, fill=Parameter)) +
+#     geom_bar(stat="identity", width = 0.5) +
+#     coord_flip() + theme_bw() + labs(x = "", y = "Parameter contribution") +
+#     scale_fill_manual(values = paramColours) +
+#     scale_y_discrete(limits=c(seq(-70,0,10)))
+# 
+# 
+# # ## WQI and parameter deduction trend
+# siteData_WQI %>%
+#   # filter(Site=="Mill Creek at Ormonds") %>%
+#   filter(Site=="Waima (Ure) River at SH1 Bridge") %>%
+#   # filter(Site=="Rai River at Rai Falls") %>%
+#   select(yearStart, Site, WQI, completeSet, contains("Ftot")) %>%
+#   mutate(alpha=factor(completeSet, levels = c(T,F))) %>%
+#   # mutate(alpha=completeSet*0.6+0.4) %>% 
+#   select_all(~str_replace(., "Ftot_","")) %>% 
+#   gather(key=Parameter,value = Ftot, Turbidity:Nitrate) %>%
+#   mutate(Parameter = ordered(Parameter,levels=names(g_lines))) %>% 
+#   ggplot(aes(x=yearStart, y=-1*Ftot)) +
+#     
+#     theme_bw() + labs(x = "Year", y = "Parameter deduction") +
+#     
+#     scale_y_continuous(position = "right", limits = c(-100,0), 
+#                        sec.axis = sec_axis(~.+100, name="Water Quality Index")) +
+#     scale_x_continuous(breaks = seq(2000,2025,1)) +
+#     
+#     scale_fill_manual(values = paramColours, labels = names(paramColours), name =  "Parameters") +
+#     scale_colour_manual(values = "blue", labels = "WQI", name = NULL) +
+#   
+#     scale_alpha_manual(name = "Dataset completeness", values = c(1,0.6), label = c("Full", "Partial"), drop = FALSE) +
+#     
+#     geom_col(aes(fill=Parameter, alpha=alpha), width = 0.5) +
+#     geom_point(aes(y=WQI-100, colour="WQI"), size=4) +
+#     geom_line(aes(y=WQI-100, colour="WQI"), size=1.5) 
+#     
+#     
+#   
+# 
+# 
+# # ## plot parameter over time
+# siteData_full %>%
+#   filter(Site=="Mill Creek at Ormonds") %>% #Awatere River at River Mouth
+#   arrange(Date) %>%
+#   ggplot(aes(x=Date, y=Turbidity, col="Turbidity")) +
+#     geom_line() + 
+#     geom_point() + 
+#     theme_bw() +
+#     scale_y_continuous(expand = expand_scale(mult = c(0.1,0.1))) + 
+#     scale_x_datetime(date_breaks = "1 year", date_labels = "%Y", expand = expand_scale(add = c(0.5,0.5))) +
+#     scale_colour_manual(values=paramColours["Turbidity"], name="Parameter", labels="SINitrogen")  
+# 
+# 
+#       
+#   
+#     labs(x = "Year", y = "SINitrogen", title = paste0("SINitrogen variation with time at Mill Creek at Ormonds site"))
+#     
+#     
+#     
+#   
+# 
+# 
+# (fill=paramColours["SINitrogen"])
+#   
+#     
+#       scale_x_datetime(date_breaks = "1 year", 
+#                      date_labels = "%Y",
+#                      expand = expand_scale(mult = c(0.1,0.1))) +
+#     scale_y_continuous(expand = expand_scale(mult = c(0,0.1)))
+#   
   #coord_cartesian(#ylim = c(min(ploty),1E5), 
                     #xlim = c(as_datetime("2007-01-01"), ceiling_date(max(siteData_full$Date),unit = "year")), 
    #                 expand=FALSE)
